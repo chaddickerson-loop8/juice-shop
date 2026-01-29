@@ -10,17 +10,27 @@ env:
   IMAGE_NAME: cdickersoncloudcoder/demo-app
 
 jobs:
-  yarn_test:
-    name: Install Dependencies and Run Yarn Tests
+  cache_dependencies:
+    name: Cache Yarn Dependencies
     runs-on: ubuntu-latest
+    container:
+      image: node:18-bullseye
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
+      - name: Install dependencies
+        run: yarn install --ignore-engines
+
+  yarn_test:
+    name: Install Dependencies and Run Yarn Tests
+    runs-on: ubuntu-latest
+    container:
+      image: node:18-bullseye
+    needs: cache_dependencies
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Install dependencies
         run: yarn install --ignore-engines
@@ -31,29 +41,33 @@ jobs:
   gitleaks_scan:
     name: Gitleaks Secret Scanning
     runs-on: ubuntu-latest
+    container:
+      image: zricethezav/gitleaks:latest
+      entrypoint: [""]
     needs: yarn_test
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        with:
-          args: detect --verbose --source .
+        run: gitleaks detect --verbose --source .
 
   build_image:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
+    container:
+      image: docker:24
+    services:
+      docker:
+        image: docker:24-dind
+        options: --privileged
     needs: gitleaks_scan
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASS }}
+        run: echo "${{ secrets.DOCKER_PASS }}" | docker login -u "${{ secrets.DOCKER_USER }}" --password-stdin
 
       - name: Build Docker image
         run: docker build -t $IMAGE_NAME:$IMAGE_TAG .
