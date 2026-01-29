@@ -6,11 +6,11 @@ on:
   pull_request:
 
 env:
-  IMAGE_TAG: juice-shop-2.0.1
-  IMAGE_NAME: cdickersoncloudcoder/demo-app
+  IMAGE_TAG: "juice-shop-2.0.1"
+  IMAGE_NAME: "cdickersoncloudcoder/demo-app"
 
 jobs:
-  cache_dependencies:
+  install_dependencies:
     name: Install Dependencies
     runs-on: ubuntu-latest
     container:
@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: node:18-bullseye
-    needs: cache_dependencies
+    needs: install_dependencies
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -43,7 +43,6 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: zricethezav/gitleaks:latest
-      entrypoint: [""]
     needs: yarn_test
     steps:
       - name: Checkout code
